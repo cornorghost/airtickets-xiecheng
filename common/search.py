@@ -2,6 +2,10 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from time import sleep
 import random
+import datetime
+from dateutil.relativedelta import relativedelta
+import re
+from save2sql import Tosql
 
 #城市代码
 city={'阿尔山': 'YIE', '阿克苏': 'AKU', '阿拉善右旗': 'RHT', '阿拉善左旗': 'AXF', '阿勒泰': 'AAT', '阿里': 'NGQ', '澳门': 'MFM',
@@ -35,11 +39,18 @@ city={'阿尔山': 'YIE', '阿克苏': 'AKU', '阿拉善右旗': 'RHT', '阿拉�
             '舟山': 'HSN',
             '珠海': 'ZUH', '遵义(茅台)': 'WMT', '遵义(新舟)': 'ZYI'}
 
-
-def info_search(url:str,start:str,end:str,time:str):
+# 根据出发地，目的地，时间爬取，只爬取飞机，不中转
+def info_search(url:str,start:str,end:str,date):
+    print(str(date))
+    date_time=str(datetime.datetime.strptime(str(date),'%Y-%m-%d')) # 转换为日期
+    week_day=date.strftime('%w') # 转换为周几
+    week_dict={'0':'周日','1':'周一','2':'周二','3':'周三','4':'周四','5':'周五','6':'周六'}
+    week_day=week_dict[week_day]
+    info_list=[]
     chrome_options=Options()
     #设置chrome浏览器无界面模式
     chrome_options.add_argument('--headless')
+    #构建headers
     USER_AGENT_LIST = [
         'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.122 Safari/537.36 SE 2.X MetaSr 1.0',
         'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_8; en-us) AppleWebKit/534.50 (KHTML, like Gecko) Version/5.1 Safari/534.50',
@@ -62,7 +73,6 @@ def info_search(url:str,start:str,end:str,time:str):
         'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; 360SE)',
         'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; Avant Browser)',
         'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1)']
-        
     user_agent = (random.choice(USER_AGENT_LIST))
     headers = 'User-Agent= "{}",Accept="{}",accept-encoding="{}",accept-language="{}",cache-control="{}",cookie="{}",Referer="{}"'.format(user_agent,
     'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3',
@@ -72,33 +82,83 @@ def info_search(url:str,start:str,end:str,time:str):
     '_abtest_userid=427f44ed-cf0b-4c75-b995-b4ca21d572fe; _ga=GA1.2.1406023646.1573299831; _RF1=111.207.1.146; _RSG=7_aiNPEaVwC1J9izn1bcvA; _RDG=28a1df2533a37725e23e1a74ab64575ae6; _RGUID=ce9f90e6-57b2-4fc7-ae66-941c7db094c1; Session=smartlinkcode=U135371&smartlinklanguage=zh&SmartLinkKeyWord=&SmartLinkQuary=&SmartLinkHost=; appFloatCnt=5; _gid=GA1.2.1669130808.1575119640; MKT_Pagesource=PC; FD_SearchHistorty={"type":"S","data":"S%24%u5317%u4EAC%28BJS%29%24BJS%242019-12-4%24%u5357%u5B81%28%u5434%u5729%u56FD%u9645%u673A%u573A%29%28NNG%29%24NNG%24%24%24"}; _bfa=1.1573299825075.2c2710.1.1574130278578.1575119584536.9.82; _bfs=1.3; _jzqco=%7C%7C%7C%7C%7C1.51473978.1573299831438.1575119640308.1575119698012.1575119640308.1575119698012.0.0.0.65.65; __zpspc=9.10.1575119640.1575119698.2%233%7Cwww.google.com%7C%7C%7C%7C%23; _bfi=p1%3D10320673302%26p2%3D100101991%26v1%3D82%26v2%3D81',
     'https://www.ctrip.com/')
 
-                #    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3',
-                #    'accept-encoding':'gzip, deflate, br',
-                #    'accept-language':'zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7,zh-TW;q=0.6',
-                #    'cache-control':'max-age=0',
-                #    'cookie':'_abtest_userid=427f44ed-cf0b-4c75-b995-b4ca21d572fe; _ga=GA1.2.1406023646.1573299831; _RF1=111.207.1.146; _RSG=7_aiNPEaVwC1J9izn1bcvA; _RDG=28a1df2533a37725e23e1a74ab64575ae6; _RGUID=ce9f90e6-57b2-4fc7-ae66-941c7db094c1; Session=smartlinkcode=U135371&smartlinklanguage=zh&SmartLinkKeyWord=&SmartLinkQuary=&SmartLinkHost=; appFloatCnt=5; _gid=GA1.2.1669130808.1575119640; MKT_Pagesource=PC; FD_SearchHistorty={"type":"S","data":"S%24%u5317%u4EAC%28BJS%29%24BJS%242019-12-4%24%u5357%u5B81%28%u5434%u5729%u56FD%u9645%u673A%u573A%29%28NNG%29%24NNG%24%24%24"}; _bfa=1.1573299825075.2c2710.1.1574130278578.1575119584536.9.82; _bfs=1.3; _jzqco=%7C%7C%7C%7C%7C1.51473978.1573299831438.1575119640308.1575119698012.1575119640308.1575119698012.0.0.0.65.65; __zpspc=9.10.1575119640.1575119698.2%233%7Cwww.google.com%7C%7C%7C%7C%23; _bfi=p1%3D10320673302%26p2%3D100101991%26v1%3D82%26v2%3D81',
-                #    'Referer': 'https://www.ctrip.com/',
-                #    }
+    #    'User-Agent': user_agent,
+    #    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3',
+    #    'accept-encoding':'gzip, deflate, br',
+    #    'accept-language':'zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7,zh-TW;q=0.6',
+    #    'cache-control':'max-age=0',
+    #    'cookie':'_abtest_userid=427f44ed-cf0b-4c75-b995-b4ca21d572fe; _ga=GA1.2.1406023646.1573299831; _RF1=111.207.1.146; _RSG=7_aiNPEaVwC1J9izn1bcvA; _RDG=28a1df2533a37725e23e1a74ab64575ae6; _RGUID=ce9f90e6-57b2-4fc7-ae66-941c7db094c1; Session=smartlinkcode=U135371&smartlinklanguage=zh&SmartLinkKeyWord=&SmartLinkQuary=&SmartLinkHost=; appFloatCnt=5; _gid=GA1.2.1669130808.1575119640; MKT_Pagesource=PC; FD_SearchHistorty={"type":"S","data":"S%24%u5317%u4EAC%28BJS%29%24BJS%242019-12-4%24%u5357%u5B81%28%u5434%u5729%u56FD%u9645%u673A%u573A%29%28NNG%29%24NNG%24%24%24"}; _bfa=1.1573299825075.2c2710.1.1574130278578.1575119584536.9.82; _bfs=1.3; _jzqco=%7C%7C%7C%7C%7C1.51473978.1573299831438.1575119640308.1575119698012.1575119640308.1575119698012.0.0.0.65.65; __zpspc=9.10.1575119640.1575119698.2%233%7Cwww.google.com%7C%7C%7C%7C%23; _bfi=p1%3D10320673302%26p2%3D100101991%26v1%3D82%26v2%3D81',
+    #    'Referer': 'https://www.ctrip.com/',
+    #    
+
     chrome_options.add_argument(headers)
     browser=webdriver.Chrome(chrome_options=chrome_options)
-    browser.get(url+city[start]+'-'+city[end]+'?date='+time)
+    browser.get(url+city[start]+'-'+city[end]+'?date='+date_time)
 
     #获取元素位置并填入
-    browser.implicitly_wait(random.choice([1,2,3,4])) 
-    tickets_elements=browser.find_elements_by_class_name('flight_card_content')
+    browser.implicitly_wait(random.choice([1,2,3])) 
+    try:
+        tickets_elements=browser.find_elements_by_class_name('search_table_header')
+    except:
+        print('获取元素失败')
+        return None
 
+    # 爬去元素
     for item in tickets_elements:
-        print(item.text+'\n'+'****************************************')
-
+        info_dict={}
+        info=item.text.split('\n')
+        if info[0][0]=='当':
+            del info[0]
+        if '经停' in info:
+            info_dict['起飞星期']=week_day
+            info_dict['飞机型号']=info[0]+info[1]
+            info_dict['起飞时间']=info[2]+'({})'
+            info_dict['起飞机场']=info[3]+'({})'.format(start)
+            info_dict['降落时间']=info[6]
+            info_dict['降落机场']=info[7]+'({})'.format(end)
+            info_dict['准点率']=info[9]
+            info_dict['价格']=int(re.findall(r'\d+\.?\d*',info[10])[0])
+            info_dict['直达状况']='直达'
+            info_list.append(info_dict)
+        else:
+            info_dict['起飞星期']=week_day
+            info_dict['飞机型号']=info[0]+info[1]
+            info_dict['起飞时间']=info[2]
+            info_dict['起飞机场']=info[3]+'({})'.format(start)
+            info_dict['降落时间']=info[4]
+            info_dict['降落机场']=info[5]+'({})'.format(end)
+            info_dict['准点率']=info[7]
+            info_dict['价格']=int(re.findall(r'\d+\.?\d*',info[8])[0])
+            info_dict['直达状况']='直达'
+            info_list.append(info_dict)
+        # print(info)
     browser.close()
+    return info_list
+
     
+#获取未来三个月的日期
+def getDate(today):
+    dates=[]
+    begin=today+ datetime.timedelta(days=1)
+    end=begin+relativedelta(months=+3)
+    for i in range((end - begin).days+1):
+        day = begin + datetime.timedelta(days=i)
+        dates.append(day)
+    return dates
+
 
 if __name__ == '__main__':
-    i=0
-    while 1:
-        i+=1
-        print(i)
-        info_search('https://flights.ctrip.com/itinerary/oneway/','北京','南宁','2019-12-4')
+    tosql=Tosql()
+    departure=['天津','北京','石家庄'] # 出发地
+    destination=['南宁','桂林','梧州','柳州','北海'] # 目的地
+    dates=getDate(datetime.date.today()) # 日期
+    search_list=[]
+    for on in departure:
+        for off in destination:
+            for date in dates:
+                search_list=info_search('https://flights.ctrip.com/itinerary/oneway/',on,off,date)
+                print(search_list)
+                tosql.insert(search_list)
 
 
 # # !/usr/bin/env python
