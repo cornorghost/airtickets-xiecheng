@@ -107,31 +107,38 @@ def info_search(url:str,start:str,end:str,date):
     for item in tickets_elements:
         info_dict={}
         info=item.text.split('\n')
-        if info[0][0]=='当':
-            del info[0]
+        for item in info:
+            if '当' in item or '多人' in item or '订' in item:
+                info.remove(item)
         if '经停' in info:
             info_dict['起飞星期']=week_day
             info_dict['飞机型号']=info[0]+info[1]
-            info_dict['起飞时间']=info[2]+'({})'
+            info_dict['起飞时间']=info[2]
+            info_dict['起飞日期']=str(date)
             info_dict['起飞机场']=info[3]+'({})'.format(start)
             info_dict['降落时间']=info[6]
+            info_dict['降落日期']=str(date) if '+1' not in info[6] else str(str(date+ datetime.timedelta(days=1)))
             info_dict['降落机场']=info[7]+'({})'.format(end)
             info_dict['准点率']=info[9]
             info_dict['价格']=int(re.findall(r'\d+\.?\d*',info[10])[0])
             info_dict['直达状况']='直达'
+            info_dict['优惠状况']=info[11]
             info_list.append(info_dict)
         else:
             info_dict['起飞星期']=week_day
             info_dict['飞机型号']=info[0]+info[1]
             info_dict['起飞时间']=info[2]
+            info_dict['起飞日期']=str(date)
             info_dict['起飞机场']=info[3]+'({})'.format(start)
             info_dict['降落时间']=info[4]
+            info_dict['降落日期']=str(date) if '+1' not in info[4] else str(str(date+ datetime.timedelta(days=1)))
             info_dict['降落机场']=info[5]+'({})'.format(end)
             info_dict['准点率']=info[7]
             info_dict['价格']=int(re.findall(r'\d+\.?\d*',info[8])[0])
             info_dict['直达状况']='直达'
+            info_dict['优惠状况']=info[9]
             info_list.append(info_dict)
-        # print(info)
+        print(info)
     browser.close()
     return info_list
 
@@ -149,16 +156,24 @@ def getDate(today):
 
 if __name__ == '__main__':
     tosql=Tosql()
-    departure=['天津','北京','石家庄'] # 出发地
-    destination=['南宁','桂林','梧州','柳州','北海'] # 目的地
+    departure=['天津','北京','石家庄']  # 出发地 
+    destination=['南宁','桂林','梧州','柳州','北海'] # 目的地 
     dates=getDate(datetime.date.today()) # 日期
     search_list=[]
     for on in departure:
         for off in destination:
             for date in dates:
                 search_list=info_search('https://flights.ctrip.com/itinerary/oneway/',on,off,date)
-                print(search_list)
-                tosql.insert(search_list)
+                search_list_r=info_search('https://flights.ctrip.com/itinerary/oneway/',off,on,date)
+                # print(search_list)
+                if search_list:
+                    tosql.insert(search_list)
+                else:
+                    print("当日没有航班")
+                if search_list_r:
+                    tosql.insert(search_list_r)
+                else:
+                    print("当日没有航班返程")
 
 
 # # !/usr/bin/env python
