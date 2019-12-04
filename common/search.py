@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from time import sleep
@@ -5,6 +7,10 @@ import random
 import datetime
 from dateutil.relativedelta import relativedelta
 import re
+import urllib.request
+from bs4 import BeautifulSoup
+import requests
+import json
 from save2sql import Tosql
 
 #城市代码
@@ -46,11 +52,6 @@ def info_search(url:str,start:str,end:str,date):
     week_day=date.strftime('%w') # 转换为周几
     week_dict={'0':'周日','1':'周一','2':'周二','3':'周三','4':'周四','5':'周五','6':'周六'}
     week_day=week_dict[week_day]
-    info_list=[]
-    chrome_options=Options()
-    #设置chrome浏览器无界面模式
-    chrome_options.add_argument('--headless')
-    #构建headers
     USER_AGENT_LIST = [
         'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.122 Safari/537.36 SE 2.X MetaSr 1.0',
         'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_8; en-us) AppleWebKit/534.50 (KHTML, like Gecko) Version/5.1 Safari/534.50',
@@ -72,75 +73,91 @@ def info_search(url:str,start:str,end:str,date):
         'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; Trident/4.0; SE 2.X MetaSr 1.0; SE 2.X MetaSr 1.0; .NET CLR 2.0.50727; SE 2.X MetaSr 1.0)',
         'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; 360SE)',
         'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; Avant Browser)',
-        'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1)']
+        'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1)',
+
+        "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 "
+        "(KHTML, like Gecko) Chrome/22.0.1207.1 Safari/537.1",
+        "Mozilla/5.0 (X11; CrOS i686 2268.111.0) AppleWebKit/536.11 "
+        "(KHTML, like Gecko) Chrome/20.0.1132.57 Safari/536.11",
+        "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.6 "
+        "(KHTML, like Gecko) Chrome/20.0.1092.0 Safari/536.6",
+        "Mozilla/5.0 (Windows NT 6.2) AppleWebKit/536.6 "
+        "(KHTML, like Gecko) Chrome/20.0.1090.0 Safari/536.6",
+        "Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.1 "
+        "(KHTML, like Gecko) Chrome/19.77.34.5 Safari/537.1",
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/536.5 "
+        "(KHTML, like Gecko) Chrome/19.0.1084.9 Safari/536.5",
+        "Mozilla/5.0 (Windows NT 6.0) AppleWebKit/536.5 "
+        "(KHTML, like Gecko) Chrome/19.0.1084.36 Safari/536.5",
+        "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.3 "
+        "(KHTML, like Gecko) Chrome/19.0.1063.0 Safari/536.3",
+        "Mozilla/5.0 (Windows NT 5.1) AppleWebKit/536.3 "
+        "(KHTML, like Gecko) Chrome/19.0.1063.0 Safari/536.3",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_0) AppleWebKit/536.3 "
+        "(KHTML, like Gecko) Chrome/19.0.1063.0 Safari/536.3",
+        "Mozilla/5.0 (Windows NT 6.2) AppleWebKit/536.3 "
+        "(KHTML, like Gecko) Chrome/19.0.1062.0 Safari/536.3",
+        "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.3 "
+        "(KHTML, like Gecko) Chrome/19.0.1062.0 Safari/536.3",
+        "Mozilla/5.0 (Windows NT 6.2) AppleWebKit/536.3 "
+        "(KHTML, like Gecko) Chrome/19.0.1061.1 Safari/536.3",
+        "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.3 "
+        "(KHTML, like Gecko) Chrome/19.0.1061.1 Safari/536.3",
+        "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/536.3 "
+        "(KHTML, like Gecko) Chrome/19.0.1061.1 Safari/536.3",
+        "Mozilla/5.0 (Windows NT 6.2) AppleWebKit/536.3 "
+        "(KHTML, like Gecko) Chrome/19.0.1061.0 Safari/536.3",
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/535.24 "
+        "(KHTML, like Gecko) Chrome/19.0.1055.1 Safari/535.24",
+        "Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/535.24 "
+        "(KHTML, like Gecko) Chrome/19.0.1055.1 Safari/535.24"
+    ]
     user_agent = (random.choice(USER_AGENT_LIST))
-    headers = 'User-Agent= "{}",Accept="{}",accept-encoding="{}",accept-language="{}",cache-control="{}",cookie="{}",Referer="{}"'.format(user_agent,
-    'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3',
-    'gzip, deflate, br',
-    'zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7,zh-TW;q=0.6',
-    'max-age=0',
-    '_abtest_userid=427f44ed-cf0b-4c75-b995-b4ca21d572fe; _ga=GA1.2.1406023646.1573299831; _RF1=111.207.1.146; _RSG=7_aiNPEaVwC1J9izn1bcvA; _RDG=28a1df2533a37725e23e1a74ab64575ae6; _RGUID=ce9f90e6-57b2-4fc7-ae66-941c7db094c1; Session=smartlinkcode=U135371&smartlinklanguage=zh&SmartLinkKeyWord=&SmartLinkQuary=&SmartLinkHost=; appFloatCnt=5; _gid=GA1.2.1669130808.1575119640; MKT_Pagesource=PC; FD_SearchHistorty={"type":"S","data":"S%24%u5317%u4EAC%28BJS%29%24BJS%242019-12-4%24%u5357%u5B81%28%u5434%u5729%u56FD%u9645%u673A%u573A%29%28NNG%29%24NNG%24%24%24"}; _bfa=1.1573299825075.2c2710.1.1574130278578.1575119584536.9.82; _bfs=1.3; _jzqco=%7C%7C%7C%7C%7C1.51473978.1573299831438.1575119640308.1575119698012.1575119640308.1575119698012.0.0.0.65.65; __zpspc=9.10.1575119640.1575119698.2%233%7Cwww.google.com%7C%7C%7C%7C%23; _bfi=p1%3D10320673302%26p2%3D100101991%26v1%3D82%26v2%3D81',
-    'https://www.ctrip.com/')
+    # headers
+    pre_headers={
+        'User-Agent': user_agent,
+       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3',
+       'accept-encoding':'gzip, deflate, br',
+       'accept-language':'zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7,zh-TW;q=0.6',
+       'cache-control':'max-age=0',
+       'cookie':'_abtest_userid=427f44ed-cf0b-4c75-b995-b4ca21d572fe; _ga=GA1.2.1406023646.1573299831; _RF1=111.207.1.146; _RSG=7_aiNPEaVwC1J9izn1bcvA; _RDG=28a1df2533a37725e23e1a74ab64575ae6; _RGUID=ce9f90e6-57b2-4fc7-ae66-941c7db094c1; Session=smartlinkcode=U135371&smartlinklanguage=zh&SmartLinkKeyWord=&SmartLinkQuary=&SmartLinkHost=; appFloatCnt=5; _gid=GA1.2.1669130808.1575119640; MKT_Pagesource=PC; FD_SearchHistorty={"type":"S","data":"S%24%u5317%u4EAC%28BJS%29%24BJS%242019-12-4%24%u5357%u5B81%28%u5434%u5729%u56FD%u9645%u673A%u573A%29%28NNG%29%24NNG%24%24%24"}; _bfa=1.1573299825075.2c2710.1.1574130278578.1575119584536.9.82; _bfs=1.3; _jzqco=%7C%7C%7C%7C%7C1.51473978.1573299831438.1575119640308.1575119698012.1575119640308.1575119698012.0.0.0.65.65; __zpspc=9.10.1575119640.1575119698.2%233%7Cwww.google.com%7C%7C%7C%7C%23; _bfi=p1%3D10320673302%26p2%3D100101991%26v1%3D82%26v2%3D81',
+       'Referer': 'https://www.ctrip.com/',
+    }
 
-    #    'User-Agent': user_agent,
-    #    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3',
-    #    'accept-encoding':'gzip, deflate, br',
-    #    'accept-language':'zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7,zh-TW;q=0.6',
-    #    'cache-control':'max-age=0',
-    #    'cookie':'_abtest_userid=427f44ed-cf0b-4c75-b995-b4ca21d572fe; _ga=GA1.2.1406023646.1573299831; _RF1=111.207.1.146; _RSG=7_aiNPEaVwC1J9izn1bcvA; _RDG=28a1df2533a37725e23e1a74ab64575ae6; _RGUID=ce9f90e6-57b2-4fc7-ae66-941c7db094c1; Session=smartlinkcode=U135371&smartlinklanguage=zh&SmartLinkKeyWord=&SmartLinkQuary=&SmartLinkHost=; appFloatCnt=5; _gid=GA1.2.1669130808.1575119640; MKT_Pagesource=PC; FD_SearchHistorty={"type":"S","data":"S%24%u5317%u4EAC%28BJS%29%24BJS%242019-12-4%24%u5357%u5B81%28%u5434%u5729%u56FD%u9645%u673A%u573A%29%28NNG%29%24NNG%24%24%24"}; _bfa=1.1573299825075.2c2710.1.1574130278578.1575119584536.9.82; _bfs=1.3; _jzqco=%7C%7C%7C%7C%7C1.51473978.1573299831438.1575119640308.1575119698012.1575119640308.1575119698012.0.0.0.65.65; __zpspc=9.10.1575119640.1575119698.2%233%7Cwww.google.com%7C%7C%7C%7C%23; _bfi=p1%3D10320673302%26p2%3D100101991%26v1%3D82%26v2%3D81',
-    #    'Referer': 'https://www.ctrip.com/',
-    #    
+    request_headers={
+        'accept': '*/*',
+        'accept-encoding': 'gzip, deflate, br',
+        'accept-language': 'zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7,zh-TW;q=0.6',
+        'content-length': '287',
+        'content-type': 'application/json',
+        'cookie': '_abtest_userid=427f44ed-cf0b-4c75-b995-b4ca21d572fe; _ga=GA1.2.1406023646.1573299831; _RF1=111.207.1.146; _RSG=7_aiNPEaVwC1J9izn1bcvA; _RDG=28a1df2533a37725e23e1a74ab64575ae6; _RGUID=ce9f90e6-57b2-4fc7-ae66-941c7db094c1; Session=smartlinkcode=U135371&smartlinklanguage=zh&SmartLinkKeyWord=&SmartLinkQuary=&SmartLinkHost=; appFloatCnt=5; _gid=GA1.2.1669130808.1575119640; MKT_Pagesource=PC; FD_SearchHistorty={"type":"S","data":"S%24%u5317%u4EAC%28BJS%29%24BJS%242019-12-4%24%u5357%u5B81%28%u5434%u5729%u56FD%u9645%u673A%u573A%29%28NNG%29%24NNG%24%24%24"}; _bfa=1.1573299825075.2c2710.1.1574130278578.1575119584536.9.82; _bfs=1.3; _jzqco=%7C%7C%7C%7C%7C1.51473978.1573299831438.1575119640308.1575119698012.1575119640308.1575119698012.0.0.0.65.65; __zpspc=9.10.1575119640.1575119698.2%233%7Cwww.google.com%7C%7C%7C%7C%23; _bfi=p1%3D10320673302%26p2%3D100101991%26v1%3D82%26v2%3D81',
+        # '_abtest_userid=427f44ed-cf0b-4c75-b995-b4ca21d572fe; _ga=GA1.2.1406023646.1573299831; _RF1=111.207.1.146; _RSG=7_aiNPEaVwC1J9izn1bcvA; _RDG=28a1df2533a37725e23e1a74ab64575ae6; _RGUID=ce9f90e6-57b2-4fc7-ae66-941c7db094c1; appFloatCnt=5; _gid=GA1.2.1669130808.1575119640; MKT_Pagesource=PC; FD_SearchHistorty={"type":"S","data":"S%24%u5929%u6D25%28TSN%29%24TSN%242019-12-6%24%u6842%u6797%28%u4E24%u6C5F%u56FD%u9645%u673A%u573A%29%28KWL%29%24KWL%24%24%24"}; Session=smartlinkcode=U135371&smartlinklanguage=zh&SmartLinkKeyWord=&SmartLinkQuary=&SmartLinkHost=; Union=AllianceID=4899&SID=135371&OUID=&Expires=1575899547197; _bfa=1.1573299825075.2c2710.1.1575294741108.1575297977128.19.101; _bfs=1.2; _jzqco=%7C%7C%7C%7C%7C1.51473978.1573299831438.1575297980376.1575298473075.1575297980376.1575298473075.0.0.0.83.83; __zpspc=9.20.1575297980.1575298473.2%233%7Cwww.google.com%7C%7C%7C%7C%23; _bfi=p1%3D10320673302%26p2%3D10320673302%26v1%3D101%26v2%3D99',
+        'origin': 'https://flights.ctrip.com',
+        'referer': 'https://flights.ctrip.com/itinerary/oneway/tsn-kwl?date={}'.format(str(date)),
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-site': 'same-origin',
+        'user-agent': user_agent,
+    }
 
-    chrome_options.add_argument(headers)
-    browser=webdriver.Chrome(chrome_options=chrome_options)
-    browser.get(url+city[start]+'-'+city[end]+'?date='+date_time)
-
-    #获取元素位置并填入
-    browser.implicitly_wait(random.choice([1,2,3])) 
-    try:
-        tickets_elements=browser.find_elements_by_class_name('search_table_header')
-    except:
-        print('获取元素失败')
-        return None
-
-    # 爬去元素
-    for item in tickets_elements:
-        info_dict={}
-        info=item.text.split('\n')
-        for item in info:
-            if '当' in item or '多人' in item or '订' in item:
-                info.remove(item)
-        if '经停' in info:
-            info_dict['起飞星期']=week_day
-            info_dict['飞机型号']=info[0]+info[1]
-            info_dict['起飞时间']=info[2]
-            info_dict['起飞日期']=str(date)
-            info_dict['起飞机场']=info[3]+'({})'.format(start)
-            info_dict['降落时间']=info[6]
-            info_dict['降落日期']=str(date) if '+1' not in info[6] else str(str(date+ datetime.timedelta(days=1)))
-            info_dict['降落机场']=info[7]+'({})'.format(end)
-            info_dict['准点率']=info[9]
-            info_dict['价格']=int(re.findall(r'\d+\.?\d*',info[10])[0])
-            info_dict['直达状况']='直达'
-            info_dict['优惠状况']=info[11]
-            info_list.append(info_dict)
-        else:
-            info_dict['起飞星期']=week_day
-            info_dict['飞机型号']=info[0]+info[1]
-            info_dict['起飞时间']=info[2]
-            info_dict['起飞日期']=str(date)
-            info_dict['起飞机场']=info[3]+'({})'.format(start)
-            info_dict['降落时间']=info[4]
-            info_dict['降落日期']=str(date) if '+1' not in info[4] else str(str(date+ datetime.timedelta(days=1)))
-            info_dict['降落机场']=info[5]+'({})'.format(end)
-            info_dict['准点率']=info[7]
-            info_dict['价格']=int(re.findall(r'\d+\.?\d*',info[8])[0])
-            info_dict['直达状况']='直达'
-            info_dict['优惠状况']=info[9]
-            info_list.append(info_dict)
-        print(info)
-    browser.close()
-    return info_list
+    #request payload
+    data={"flightWay":"Oneway",
+        "classType":"ALL",
+        "hasChild":'false',
+        "hasBaby":'false',
+        "searchIndex":1,
+        "date":str(date),
+        "airportParams":[{"dcity":"TSN","acity":"KWL","dcityname":"天津","acityname":"桂林","date":str(date),"dcityid":3,"acityid":33}],
+        "token":"afdf8bc932b8724d47bb9a7ce9014441"
+    }
+    url='https://flights.ctrip.com/itinerary/api/12808/products' # 真正的请求链接
+    print(url)
+    r=requests.post(url,headers=request_headers,data=json.dumps(data)).json()
+    print(r)
+    
+    # file = open('test.json','w',encoding='utf-8')
+    # json.dump(r,file,ensure_ascii=False)
+    # file.close()
+    return r
 
     
 #获取未来三个月的日期
@@ -155,7 +172,7 @@ def getDate(today):
 
 
 if __name__ == '__main__':
-    tosql=Tosql()
+    # tosql=Tosql()
     departure=['天津','北京','石家庄']  # 出发地 
     destination=['南宁','桂林','梧州','柳州','北海'] # 目的地 
     dates=getDate(datetime.date.today()) # 日期
@@ -164,14 +181,17 @@ if __name__ == '__main__':
         for off in destination:
             for date in dates:
                 search_list=info_search('https://flights.ctrip.com/itinerary/oneway/',on,off,date)
+                sleep(random.choice([1,1.2,2,2.1,3]))
                 search_list_r=info_search('https://flights.ctrip.com/itinerary/oneway/',off,on,date)
                 # print(search_list)
                 if search_list:
-                    tosql.insert(search_list)
+                    # tosql.insert(search_list)
+                    pass
                 else:
                     print("当日没有航班")
                 if search_list_r:
-                    tosql.insert(search_list_r)
+                    # tosql.insert(search_list_r)
+                    pass
                 else:
                     print("当日没有航班返程")
 
