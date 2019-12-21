@@ -19,7 +19,7 @@ def getIP(): #返回ip供两个线程使用
     proxy_http="http://{}".format(item[0])
     proxy_https="https://{}".format(item[0])
     proxies={"http":proxy_http,"https":proxy_https}
-    if check(proxies)==1 and resp.status_code==200:
+    if check(proxies)==1:
         print('return')
         return proxies
     else:

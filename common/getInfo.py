@@ -194,56 +194,50 @@ def getDate(today):
 #获取信息解析后插入db
 def insert(flag,departure,destination,dates,tosql):
     global s1,s2,end1,end2,proxies1,proxies2
-    lock=threading.Lock()
     if flag: #爬取去程
         for on in departure:
             for off in destination:
-                sleep(random.choice([2,3]))
                 for date in dates:
-                    # print(on,off,str(date))
-                    data=info_search('https://flights.ctrip.com/itinerary/oneway/',on,off,date,proxies1)
-                    lock.acquire() #线程锁
-                    s1+=1
-                    if data['data']['routeList']!=None:
-                        print(on,off,str(date),"当日有航班")
-                        try:
+                    a=0 #防止丢包
+                    while a<5:
+                        # print(on,off,str(date))
+                        data=info_search('https://flights.ctrip.com/itinerary/oneway/',on,off,date,proxies1)
+                        s1+=1
+                        if data['data']['routeList']!=None:
+                            print(on,off,str(date),"当日有航班")
                             print(data['data']['routeList'])
                             # parseInfo(data)
                             # tosql.insert(search_list)
                             print(len(data))
                             # print(search_list)
-                            pass
-                        finally:
-                            lock.release()
-                    else:
+                            break
+                        else:
+                            a+=1
+                    if a==5:
                         print(on,off,str(date),"当日没有航班")
+                    sleep(random.choice([0.8,1,1.1,1.5,1.7,2.2]))
         end1=0
     else: #爬取返程
         for on in departure:
             for off in destination:
-                sleep(random.choice([2,3]))
                 for date in dates:
-                    # print(off,on,str(date))
-                    data=info_search('https://flights.ctrip.com/itinerary/oneway/',off,on,date,proxies2)
-                    lock.acquire() #线程锁
-                    while len(data)==2:
-                        proxies2=getIP()
-                        sleep(random.choice([0.1,0.8,1.1]))
+                    a=0 #防止丢包
+                    while a<5:
+                        # print(on,off,str(date))
                         data=info_search('https://flights.ctrip.com/itinerary/oneway/',off,on,date,proxies2)
-                    s2+=1
-                    if data['data']['routeList']!=None:
-                        print(off,on,str(date),"当日有航班")
-                        try:
+                        s2+=1
+                        if data['data']['routeList']!=None:
+                            print(on,off,str(date),"当日有航班")
                             print(data['data']['routeList'])
                             # parseInfo(data)
                             # tosql.insert(search_list)
                             print(len(data))
                             # print(search_list)
-                            pass
-                        finally:
-                            lock.release()
-                    else:
-                        print(off,on,str(date),"当日没有返回航班")
+                            break
+                        else:
+                            a+=1
+                    if a==5:
+                        print(off,on,str(date),"当日没有航班")
                     sleep(random.choice([0.8,1,1.1,1.5,1.7,2.2]))
         end2=0
 
